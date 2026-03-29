@@ -140,16 +140,19 @@ return view.extend({
 		this._upgradeTimer = null;
 		this._tabEls = {};
 
+		var contentEl = E('div', { 'id': 'oc-content' }, [
+			this._overview(st),
+			this._settings(),
+			this._console(st),
+			this._terminal(st)
+		]);
+		this._contentEl = contentEl;
+
 		var app = E('div', { 'id': 'oc-app' }, [
 			E('style', {}, [CSS]),
 			this._header(),
 			this._tabBar(),
-			E('div', { 'id': 'oc-content' }, [
-				this._overview(st),
-				this._settings(),
-				this._console(st),
-				this._terminal(st)
-			])
+			contentEl
 		]);
 
 		this._switchTab('overview');
@@ -194,10 +197,13 @@ return view.extend({
 		Object.keys(this._tabEls).forEach(function(k) {
 			self._tabEls[k].classList.toggle('active', k === id);
 		});
-		var panels = document.querySelectorAll('#oc-content > .oc-panel');
-		if (panels) panels.forEach(function(p) {
-			p.classList.toggle('active', p.getAttribute('data-panel') === id);
-		});
+		var root = this._contentEl || document.getElementById('oc-content');
+		if (root) {
+			var panels = root.querySelectorAll('.oc-panel');
+			if (panels) panels.forEach(function(p) {
+				p.classList.toggle('active', p.getAttribute('data-panel') === id);
+			});
+		}
 	},
 
 	/* ═══ Overview Panel ═══ */
