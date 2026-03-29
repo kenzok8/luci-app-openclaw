@@ -5,10 +5,10 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-openclaw
-PKG_VERSION:=2026.03.29
+PKG_VERSION:=2026.03.30
 PKG_RELEASE:=1
 
-PKG_MAINTAINER:=kenzok78
+PKG_MAINTAINER:=kenzok8
 PKG_LICENSE:=GPL-3.0
 
 LUCI_TITLE:=OpenClaw AI Gateway

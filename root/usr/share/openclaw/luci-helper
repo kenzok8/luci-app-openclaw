@@ -92,7 +92,8 @@ status)
 		if [ -n "$pid" ] && [ -d "/proc/$pid" ]; then
 			mem_kb=$(awk '/VmRSS/{print $2}' "/proc/$pid/status" 2>/dev/null)
 			[ -z "$mem_kb" ] && mem_kb=0
-			start_ts=$(stat -c %Y "/proc/$pid" 2>/dev/null)
+			# BusyBox 无 stat，用 date -r 读 /proc/$pid 目录 mtime
+			start_ts=$(date -r "/proc/$pid" +%s 2>/dev/null)
 			if [ -n "$start_ts" ]; then
 				now=$(date +%s)
 				diff=$((now - start_ts))
