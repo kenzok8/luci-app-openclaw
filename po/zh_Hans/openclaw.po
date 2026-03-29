@@ -85,6 +85,9 @@ msgstr "检测升级"
 msgid "Uninstall"
 msgstr "卸载环境"
 
+msgid "More"
+msgstr "更多"
+
 msgid "Plugin Upgrade"
 msgstr "插件升级"
 
