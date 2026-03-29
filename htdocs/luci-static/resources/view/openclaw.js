@@ -24,37 +24,52 @@ function fmtMem(kb) {
 }
 
 /* ── Crayfish SVG Logo ── */
-var LOGO_SVG = '<svg viewBox="0 0 48 48" width="40" height="40" style="vertical-align:middle">' +
-	'<defs><linearGradient id="cg" x1="0%" y1="0%" x2="100%" y2="100%">' +
-	'<stop offset="0%" style="stop-color:#ff6b6b"/>' +
-	'<stop offset="100%" style="stop-color:#c0392b"/>' +
-	'</linearGradient></defs>' +
-	'<ellipse cx="24" cy="28" rx="10" ry="13" fill="url(#cg)"/>' +
-	'<ellipse cx="24" cy="18" rx="7" ry="6" fill="#e74c3c"/>' +
-	'<circle cx="21" cy="16" r="1.5" fill="#fff"/>' +
-	'<circle cx="27" cy="16" r="1.5" fill="#fff"/>' +
-	'<path d="M17 14 Q12 8 8 10" stroke="#c0392b" stroke-width="2.5" fill="none" stroke-linecap="round"/>' +
-	'<path d="M31 14 Q36 8 40 10" stroke="#c0392b" stroke-width="2.5" fill="none" stroke-linecap="round"/>' +
-	'<circle cx="7" cy="10" r="2" fill="#e74c3c"/>' +
-	'<circle cx="41" cy="10" r="2" fill="#e74c3c"/>' +
-	'<path d="M14 26 Q8 22 6 26 Q4 30 10 28Z" fill="#e74c3c"/>' +
-	'<path d="M34 26 Q40 22 42 26 Q44 30 38 28Z" fill="#e74c3c"/>' +
-	'<ellipse cx="24" cy="38" rx="4" ry="5" fill="#c0392b" opacity="0.8"/>' +
-	'<path d="M20 40 Q18 44 16 43" stroke="#c0392b" stroke-width="1.5" fill="none"/>' +
-	'<path d="M28 40 Q30 44 32 43" stroke="#c0392b" stroke-width="1.5" fill="none"/>' +
+var LOGO_SVG = '<svg viewBox="0 0 64 68" width="44" height="47" style="vertical-align:middle">' +
+	'<defs>' +
+	'<radialGradient id="glow"><stop offset="0%" stop-color="#d44" stop-opacity=".4"/><stop offset="100%" stop-color="#d44" stop-opacity="0"/></radialGradient>' +
+	'<radialGradient id="body-g" cx="45%" cy="40%"><stop offset="0%" stop-color="#e06050"/><stop offset="100%" stop-color="#b03828"/></radialGradient>' +
+	'</defs>' +
+	/* glow */
+	'<ellipse cx="32" cy="36" rx="30" ry="28" fill="url(#glow)"/>' +
+	/* body - one big round shape */
+	'<ellipse cx="32" cy="33" rx="16" ry="20" fill="url(#body-g)"/>' +
+	/* head merged */
+	'<circle cx="32" cy="17" r="12" fill="#c84838"/>' +
+	/* belly overlap */
+	'<ellipse cx="32" cy="25" rx="13" ry="8" fill="#c04030"/>' +
+	/* antennae - thin elegant curves */
+	'<path d="M27 8 Q24 1 22 0" stroke="#a03020" stroke-width="1.8" fill="none" stroke-linecap="round"/>' +
+	'<path d="M37 8 Q40 1 42 0" stroke="#a03020" stroke-width="1.8" fill="none" stroke-linecap="round"/>' +
+	/* eyes - dark circle + teal iris + highlight */
+	'<circle cx="26.5" cy="16" r="3.8" fill="#111a1a"/>' +
+	'<circle cx="37.5" cy="16" r="3.8" fill="#111a1a"/>' +
+	'<circle cx="27" cy="15.5" r="2.2" fill="#20b090"/>' +
+	'<circle cx="38" cy="15.5" r="2.2" fill="#20b090"/>' +
+	'<circle cx="27.8" cy="14.8" r=".8" fill="#fff" opacity=".9"/>' +
+	'<circle cx="38.8" cy="14.8" r=".8" fill="#fff" opacity=".9"/>' +
+	/* arms / claws - rounded bumps */
+	'<ellipse cx="13" cy="28" rx="5.5" ry="6.5" fill="#c04838"/>' +
+	'<ellipse cx="51" cy="28" rx="5.5" ry="6.5" fill="#c04838"/>' +
+	/* legs */
+	'<rect x="26.5" y="51" width="4" height="7" rx="2" fill="#a03020"/>' +
+	'<rect x="33.5" y="51" width="4" height="7" rx="2" fill="#a03020"/>' +
+	/* feet */
+	'<rect x="25" y="56" width="6.5" height="3" rx="1.5" fill="#8a2818"/>' +
+	'<rect x="32.5" y="56" width="6.5" height="3" rx="1.5" fill="#8a2818"/>' +
 	'</svg>';
 
 /* ── CSS ── */
 var CSS = '\
 *,*::before,*::after{box-sizing:border-box}\
-#oc-app{max-width:1100px;margin:0 auto;padding:0 16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}\
-.oc-header{background:linear-gradient(135deg,#1565c0 0%,#0d47a1 50%,#1a237e 100%);color:#fff;padding:18px 22px;border-radius:10px;margin-bottom:0;display:flex;align-items:center;gap:14px}\
+#oc-app{max-width:1100px;margin:0 auto;padding:0 16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;width:100%}\
+.oc-header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);color:#fff;padding:18px 22px;border-radius:10px;margin-bottom:0;display:flex;align-items:center;gap:14px}\
 .oc-header h2{margin:0;font-size:20px;font-weight:600}\
 .oc-header .sub{font-size:12px;opacity:.8;margin-top:2px}\
+.oc-header>*,.oc-header h2,.oc-header .sub{background:transparent!important;box-shadow:none!important;border:none!important;border-radius:0!important;padding:0!important;color:inherit!important;margin:0!important}\
 .oc-tabs{display:flex;background:#f8f9fa;border-bottom:2px solid #e0e0e0;overflow-x:auto}\
 .oc-tab{padding:11px 22px;font-size:13px;font-weight:500;color:#666;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s;white-space:nowrap;user-select:none}\
-.oc-tab:hover{color:#1565c0;background:#e8f0fe}\
-.oc-tab.active{color:#1565c0;border-bottom-color:#1565c0;background:#fff}\
+.oc-tab:hover{color:#0f3460;background:#e8edf5}\
+.oc-tab.active{color:#0f3460;border-bottom-color:#0f3460;background:#fff}\
 .oc-panel{display:none;padding:20px 0}\
 .oc-panel.active{display:block}\
 .oc-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}\
@@ -81,7 +96,7 @@ var CSS = '\
 .oc-btn:hover{filter:brightness(.93)}\
 .oc-btn:active{transform:scale(.97)}\
 .oc-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;filter:none}\
-.oc-btn-p{background:#1565c0;color:#fff}\
+.oc-btn-p{background:#0f3460;color:#fff}\
 .oc-btn-s{background:#2e7d32;color:#fff}\
 .oc-btn-d{background:#c62828;color:#fff}\
 .oc-btn-g{background:#f5f5f5;color:#333;border:1px solid #ddd}\
@@ -101,7 +116,7 @@ var CSS = '\
 .oc-form-lbl{width:120px;font-size:13px;font-weight:500;color:#555;flex-shrink:0}\
 .oc-form-ctl{flex:1;min-width:0}\
 .oc-form-ctl input,.oc-form-ctl select{padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:100%;max-width:260px;outline:none;transition:border-color .2s}\
-.oc-form-ctl input:focus,.oc-form-ctl select:focus{border-color:#1565c0}\
+.oc-form-ctl input:focus,.oc-form-ctl select:focus{border-color:#0f3460}\
 .oc-form-hint{font-size:11px;color:#999;margin-top:3px}\
 .oc-iframe-wrap{border:2px solid #e0e0e0;border-radius:10px;overflow:hidden;margin-top:10px;background:#fafafa}\
 .oc-iframe-wrap iframe{width:100%;height:650px;border:none;display:block}\
@@ -111,8 +126,8 @@ var CSS = '\
 .oc-dialog{background:#fff;border-radius:12px;padding:24px;max-width:440px;width:92%;box-shadow:0 8px 32px rgba(0,0,0,.2)}\
 .oc-dialog h3{margin:0 0 16px;font-size:16px;color:#333}\
 .oc-dialog-opt{padding:12px 14px;border:2px solid #e0e0e0;border-radius:8px;margin-bottom:10px;cursor:pointer;transition:all .2s}\
-.oc-dialog-opt:hover{border-color:#90caf9}\
-.oc-dialog-opt.sel{border-color:#1565c0;background:#e8f0fe}\
+.oc-dialog-opt:hover{border-color:#7a9cc6}\
+.oc-dialog-opt.sel{border-color:#0f3460;background:#e8edf5}\
 .oc-dialog-opt strong{display:block;font-size:13px;color:#333}\
 .oc-dialog-opt small{font-size:11px;color:#888;display:block;margin-top:3px}\
 .oc-dialog-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}\
@@ -120,7 +135,7 @@ var CSS = '\
 .oc-switch input{opacity:0;width:0;height:0}\
 .oc-switch .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;border-radius:24px;transition:.3s}\
 .oc-switch .slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}\
-.oc-switch input:checked+.slider{background:#1565c0}\
+.oc-switch input:checked+.slider{background:#0f3460}\
 .oc-switch input:checked+.slider:before{transform:translateX(20px)}\
 .oc-more-wrap{position:relative;display:inline-block}\
 .oc-more-menu{position:absolute;top:100%;right:0;margin-top:6px;background:#fff;border:1px solid #e0e0e0;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.12);min-width:190px;z-index:100;display:none;overflow:hidden;padding:4px 0}\
@@ -131,12 +146,16 @@ var CSS = '\
 .oc-more-item.danger:hover{background:#fff5f5}\
 .oc-more-sep{height:1px;background:#eee;margin:4px 0}\
 @media(max-width:768px){\
-#oc-app{padding:0 10px}\
+#oc-app{padding:0 10px;max-width:100%;overflow-x:hidden}\
+.oc-tabs{max-width:100%}\
 .oc-header{padding:14px 16px;gap:10px}\
 .oc-header h2{font-size:16px}\
 .oc-cards{grid-template-columns:repeat(2,1fr);gap:10px}\
 .oc-card .val{font-size:17px}\
 .oc-card .val.sm{font-size:13px}\
+.oc-actions{gap:6px;flex-wrap:nowrap;max-width:100%;overflow:hidden}\
+.oc-actions>*{flex:0 1 auto;min-width:0}\
+.oc-actions .oc-btn{padding:7px 10px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;justify-content:center}\
 .oc-form-row{flex-direction:column;align-items:stretch;gap:4px}\
 .oc-form-lbl{width:auto}\
 .oc-form-ctl input,.oc-form-ctl select{max-width:100%}\
@@ -147,13 +166,47 @@ var CSS = '\
 .oc-header{padding:12px 14px}\
 .oc-header h2{font-size:15px}\
 .oc-tab{padding:9px 14px;font-size:12px}\
-.oc-btn{padding:7px 12px;font-size:12px}\
+.oc-btn{padding:6px 10px;font-size:12px}\
+.oc-actions .oc-btn{padding:6px 8px;font-size:11px}\
 .oc-info td{padding:7px 12px;font-size:12px}\
 .oc-cards{gap:8px}\
 .oc-card{padding:10px 12px}\
 .oc-card .val{font-size:16px}\
 .oc-iframe-wrap iframe{height:350px}\
 }\
+/* dark mode for ArgonTheme */\
+#oc-app[data-dark] .oc-card,\
+#oc-app[data-dark] .oc-info,\
+#oc-app[data-dark] .oc-form,\
+#oc-app[data-dark] .oc-dialog,\
+#oc-app[data-dark] .oc-more-menu{background:#2a2a2a;border-color:#3c3c3c}\
+#oc-app[data-dark] .oc-card .val,\
+#oc-app[data-dark] .oc-info td:last-child,\
+#oc-app[data-dark] .oc-more-item,\
+#oc-app[data-dark] .oc-form-lbl,\
+#oc-app[data-dark] .oc-dialog h3,\
+#oc-app[data-dark] .oc-dialog-opt strong{color:#ccc}\
+#oc-app[data-dark] .oc-info-title,\
+#oc-app[data-dark] .oc-form-title{background:#333;color:#aaa;border-color:#3c3c3c}\
+#oc-app[data-dark] .oc-tabs{background:#2a2a2a;border-color:#3c3c3c}\
+#oc-app[data-dark] .oc-tab{color:#999}\
+#oc-app[data-dark] .oc-tab.active{color:#a5b2ff;border-bottom-color:#a5b2ff;background:#1e1e1e}\
+#oc-app[data-dark] .oc-tab:hover{color:#a5b2ff;background:#333}\
+#oc-app[data-dark] .oc-btn-g{background:#333;color:#ccc;border-color:#555}\
+#oc-app[data-dark] .oc-info td{border-color:#333}\
+#oc-app[data-dark] .oc-info td:first-child{color:#999}\
+#oc-app[data-dark] .oc-form-row{border-color:#333}\
+#oc-app[data-dark] .oc-form-ctl input,\
+#oc-app[data-dark] .oc-form-ctl select{background:#1e1e1e;color:#ccc;border-color:#3c3c3c}\
+#oc-app[data-dark] .oc-card .lbl{color:#999}\
+#oc-app[data-dark] .oc-more-item:hover{background:#333}\
+#oc-app[data-dark] .oc-more-sep{background:#3c3c3c}\
+#oc-app[data-dark] .oc-badge-off{background:#333;color:#999}\
+#oc-app[data-dark] .oc-dialog-opt{border-color:#3c3c3c}\
+#oc-app[data-dark] .oc-dialog-opt.sel{border-color:#a5b2ff;background:#2a2a3a}\
+#oc-app[data-dark] .oc-iframe-wrap{border-color:#3c3c3c;background:#1e1e1e}\
+#oc-app[data-dark] .oc-log-ok{background:#1a3a1a;border-color:#2a4a2a;color:#6dbb6d}\
+#oc-app[data-dark] .oc-log-fail{background:#3a1a1a;border-color:#4a2a2a;color:#dd6666}\
 ';
 
 return view.extend({
@@ -187,6 +240,11 @@ return view.extend({
 			contentEl
 		]);
 
+		/* detect dark mode: ArgonTheme dark.css or system preference */
+		var isDark = document.querySelector('link[href*="dark"]') !== null ||
+			window.matchMedia('(prefers-color-scheme: dark)').matches;
+		if (isDark) app.setAttribute('data-dark', '');
+
 		this._switchTab('overview');
 		poll.add(L.bind(this._poll, this), 5);
 
@@ -203,7 +261,7 @@ return view.extend({
 		var h = E('div', { 'class': 'oc-header' });
 		h.innerHTML = LOGO_SVG +
 			'<div><h2>OpenClaw AI Gateway</h2>' +
-			'<div class="sub">Intelligent AI routing on your OpenWrt router</div></div>';
+			'<div class="sub">' + _('Intelligent AI routing on your OpenWrt router') + '</div></div>';
 		return h;
 	},
 
@@ -275,7 +333,7 @@ return view.extend({
 	},
 
 	_badge: function(st) {
-		if (!st || !st.enabled) return '<span class="oc-badge oc-badge-off">Unknown</span>';
+		if (!st || !st.enabled) return '<span class="oc-badge oc-badge-off">' + _('Unknown') + '</span>';
 		if (st.enabled !== '1') return '<span class="oc-badge oc-badge-off"><span class="oc-dot oc-dot-x"></span>' + _('Disabled') + '</span>';
 		if (st.gateway_running) return '<span class="oc-badge oc-badge-run"><span class="oc-dot oc-dot-g"></span>' + _('Running') + '</span>';
 		if (st.gateway_starting) return '<span class="oc-badge oc-badge-start"><span class="oc-dot oc-dot-y"></span>' + _('Starting') + '</span>';
@@ -289,7 +347,7 @@ return view.extend({
 			[_('Plugin'),       'oc-i-plugin',   st.plugin_version || '-'],
 			[_('Active Model'), 'oc-i-model',    st.active_model || '-'],
 			[_('Channels'),     'oc-i-channels', st.channels || '-'],
-			['PID',             'oc-i-pid',      st.pid || '-'],
+			[_('PID'),          'oc-i-pid',      st.pid || '-'],
 			[_('Config PTY'),   'oc-i-pty',      st.pty_running ? '✅ ' + _('Running') + ' (:' + (st.pty_port || '18793') + ')' : '⏹ ' + _('Stopped')]
 		];
 		var tbody = E('tbody');
@@ -315,7 +373,7 @@ return view.extend({
 		}, ['▶ ' + _('Start')]));
 
 		wrap.appendChild(E('button', {
-			'class': 'oc-btn oc-btn-g', 'id': 'oc-btn-stop',
+			'class': 'oc-btn oc-btn-d', 'id': 'oc-btn-stop',
 			'click': function() { self._svcCtl('stop'); }
 		}, ['⏹ ' + _('Stop')]));
 
