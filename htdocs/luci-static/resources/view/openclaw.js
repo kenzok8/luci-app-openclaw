@@ -62,11 +62,11 @@ var LOGO_SVG = '<svg viewBox="0 0 64 68" width="44" height="47" style="vertical-
 var CSS = '\
 *,*::before,*::after{box-sizing:border-box}\
 #oc-app{max-width:1100px;margin:0 auto;padding:0 16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;width:100%}\
-.oc-header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);color:#fff;padding:18px 22px;border-radius:10px;margin-bottom:0;display:flex;align-items:center;gap:14px}\
+.oc-header{background:transparent;color:inherit;padding:10px 0 8px;border-radius:0;margin-bottom:0;display:flex;align-items:center;gap:12px}\
 .oc-header h2{margin:0;font-size:20px;font-weight:600}\
-.oc-header .sub{font-size:12px;opacity:.8;margin-top:2px}\
-.oc-header>*,.oc-header h2,.oc-header .sub{background:transparent!important;box-shadow:none!important;border:none!important;border-radius:0!important;padding:0!important;color:inherit!important;margin:0!important}\
-.oc-tabs{display:flex;background:#f8f9fa;border-bottom:2px solid #e0e0e0;overflow-x:auto}\
+.oc-header .sub{font-size:12px;opacity:.5;margin-top:1px;color:#888}\
+.oc-header>*,.oc-header h2,.oc-header .sub{background:transparent!important;box-shadow:none!important;border:none!important;border-radius:0!important;padding:0!important;margin:0!important}\
+.oc-tabs{display:flex;background:#f8f9fa;border-bottom:2px solid #e0e0e0;overflow:hidden}\
 .oc-tab{padding:11px 22px;font-size:13px;font-weight:500;color:#666;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s;white-space:nowrap;user-select:none}\
 .oc-tab:hover{color:#0f3460;background:#e8edf5}\
 .oc-tab.active{color:#0f3460;border-bottom-color:#0f3460;background:#fff}\
@@ -148,7 +148,7 @@ var CSS = '\
 @media(max-width:768px){\
 #oc-app{padding:0 10px;max-width:100%;overflow-x:hidden}\
 .oc-tabs{max-width:100%}\
-.oc-header{padding:14px 16px;gap:10px}\
+.oc-header{padding:8px 0;gap:10px}\
 .oc-header h2{font-size:16px}\
 .oc-cards{grid-template-columns:repeat(2,1fr);gap:10px}\
 .oc-card .val{font-size:17px}\
@@ -163,7 +163,7 @@ var CSS = '\
 .oc-info td:first-child{width:80px}\
 }\
 @media(max-width:420px){\
-.oc-header{padding:12px 14px}\
+.oc-header{padding:6px 0}\
 .oc-header h2{font-size:15px}\
 .oc-tab{padding:9px 14px;font-size:12px}\
 .oc-btn{padding:6px 10px;font-size:12px}\
