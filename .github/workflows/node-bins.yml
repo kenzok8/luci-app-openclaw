@@ -11,6 +11,9 @@ on:
         description: 'Number of old versions to keep (default 3)'
         required: false
         default: '3'
+  push:
+    branches:
+      - main
   schedule:
     - cron: '0 2 * * 1'
 
