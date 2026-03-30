@@ -1,0 +1,166 @@
+name: Build & Release IPK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v2026.03.30)'
+        required: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: ver
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          # Strip leading 'v'
+          VER="${TAG#v}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VER}" >> "$GITHUB_OUTPUT"
+          echo "Building IPK for ${TAG} (version ${VER})"
+
+      - name: Build IPK
+        id: build
+        run: |
+          VER="${{ steps.ver.outputs.version }}"
+          PKG="luci-app-openclaw"
+          IPK="${PKG}_${VER}_all.ipk"
+
+          # ── Assemble data tree ──
+          mkdir -p _build/data
+          # root/ → data/
+          cp -a root/. _build/data/
+          # htdocs/ → data/www/luci-static/...
+          mkdir -p _build/data/www
+          cp -a htdocs/. _build/data/www/
+          # luasrc/ → data/usr/lib/lua/luci/
+          mkdir -p _build/data/usr/lib/lua/luci
+          cp -a luasrc/. _build/data/usr/lib/lua/luci/
+          # po/ → data/usr/share/luci/i18n/
+          if [ -d po ]; then
+            mkdir -p _build/data/usr/share/luci/i18n
+            find po -name "*.po" | while read f; do
+              lang=$(basename "$(dirname "$f")")
+              cp "$f" "_build/data/usr/share/luci/i18n/${PKG}.${lang}.po"
+            done
+          fi
+
+          # ── control ──
+          mkdir -p _build/control
+          SIZE=$(du -sk _build/data | awk '{print $1}')
+          cat > _build/control/control <<EOF
+          Package: ${PKG}
+          Version: ${VER}
+          Architecture: all
+          Maintainer: kenzok8
+          Depends: luci-compat, luci-base, curl, openssl-util
+          Section: luci
+          Priority: optional
+          Description: OpenClaw AI Gateway LuCI plugin for OpenWrt
+          EOF
+          # Trim leading whitespace from heredoc indentation
+          sed -i 's/^[[:space:]]*//' _build/control/control
+
+          cat > _build/control/conffiles <<'EOF'
+          /etc/config/openclaw
+          EOF
+
+          # postinst: clear LuCI caches so the new view appears immediately
+          cat > _build/control/postinst <<'POSTINST'
+          #!/bin/sh
+          rm -f /tmp/luci-indexcache 2>/dev/null
+          rm -rf /tmp/luci-modulecache 2>/dev/null
+          exit 0
+          POSTINST
+          chmod 0755 _build/control/postinst
+
+          # ── Pack tarballs ──
+          ( cd _build/control && tar --numeric-owner --owner=0 --group=0 -czf ../control.tar.gz . )
+          ( cd _build/data    && tar --numeric-owner --owner=0 --group=0 -czf ../data.tar.gz    . )
+
+          # ── Build ipk (ar archive) ──
+          echo "2.0" > _build/debian-binary
+          ar rcs "${IPK}" _build/debian-binary _build/control.tar.gz _build/data.tar.gz
+
+          ls -lh "${IPK}"
+          echo "ipk=${IPK}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          VER="${{ steps.ver.outputs.version }}"
+          TAG="${{ steps.ver.outputs.tag }}"
+          # Collect commits since previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            CHANGES=$(git log --oneline "${PREV_TAG}..${TAG}" 2>/dev/null | head -20 || echo "See commit history")
+          else
+            CHANGES=$(git log --oneline -10 2>/dev/null || echo "Initial release")
+          fi
+
+          cat > release_notes.md <<EOF
+          ## luci-app-openclaw ${TAG}
+
+          OpenWrt LuCI plugin for [OpenClaw AI Gateway](https://openclaw.ai).
+
+          ### 安装
+
+          在 OpenWrt 路由器上运行（推荐）：
+
+          \`\`\`sh
+          sh -c "\$(wget -qO- https://cdn.jsdelivr.net/gh/kenzok8/luci-app-openclaw@main/scripts/install.sh)"
+          \`\`\`
+
+          或手动下载安装：
+
+          \`\`\`sh
+          wget -O /tmp/luci-app-openclaw.ipk https://github.com/kenzok8/luci-app-openclaw/releases/download/${TAG}/luci-app-openclaw_${VER}_all.ipk
+          opkg install --force-reinstall /tmp/luci-app-openclaw.ipk
+          \`\`\`
+
+          ### 更新内容
+
+          \`\`\`
+          ${CHANGES}
+          \`\`\`
+
+          ### 支持架构
+
+          | 架构 | 说明 |
+          |------|------|
+          | all  | LuCI 插件（架构无关）|
+
+          > Node.js musl 二进制见 [node-bins](https://github.com/kenzok8/luci-app-openclaw/releases/tag/node-bins) release
+          EOF
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.ver.outputs.tag }}"
+          IPK="${{ steps.build.outputs.ipk }}"
+
+          gh release create "${TAG}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "luci-app-openclaw ${TAG}" \
+            --notes-file release_notes.md \
+            "${IPK}"
+
+          echo "Released ${IPK} as ${TAG}"

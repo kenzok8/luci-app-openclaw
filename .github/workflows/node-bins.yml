@@ -1,0 +1,94 @@
+name: Sync Node.js musl binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      node_version:
+        description: 'Node.js version (e.g. 22.16.0)'
+        required: false
+        default: '22.16.0'
+  schedule:
+    # Check for new LTS releases weekly on Monday 02:00 UTC
+    - cron: '0 2 * * 1'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Determine Node.js version
+        id: ver
+        run: |
+          INPUT_VER="${{ github.event.inputs.node_version }}"
+          if [ -n "$INPUT_VER" ]; then
+            echo "version=${INPUT_VER}" >> "$GITHUB_OUTPUT"
+          else
+            # Fetch latest LTS version from nodejs.org
+            LATEST=$(curl -fsSL https://nodejs.org/dist/index.json | \
+              python3 -c "import sys,json; data=json.load(sys.stdin); lts=[x for x in data if x['lts']]; print(lts[0]['version'].lstrip('v'))")
+            echo "version=${LATEST}" >> "$GITHUB_OUTPUT"
+            echo "Latest LTS: ${LATEST}"
+          fi
+
+      - name: Check if already released
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VER="${{ steps.ver.outputs.version }}"
+          # Check if the x64 file already exists in the node-bins release
+          if gh release view node-bins --repo "$GITHUB_REPOSITORY" 2>/dev/null | grep -q "node-v${VER}-linux-x64-musl.tar.gz"; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "v${VER} already in node-bins release, skipping."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download Node.js musl binaries
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          VER="${{ steps.ver.outputs.version }}"
+          BASE="https://unofficial-builds.nodejs.org/download/release/v${VER}"
+
+          echo "Downloading Node.js v${VER} musl builds..."
+          curl -fsSL "${BASE}/node-v${VER}-linux-x64-musl.tar.gz" -o "node-v${VER}-linux-x64-musl.tar.gz"
+          curl -fsSL "${BASE}/node-v${VER}-linux-arm64-musl.tar.gz" -o "node-v${VER}-linux-arm64-musl.tar.gz"
+
+          # Verify downloads
+          ls -lh node-v${VER}-linux-*.tar.gz
+          for f in node-v${VER}-linux-*.tar.gz; do
+            SIZE=$(stat -c%s "$f")
+            [ "$SIZE" -gt 10000000 ] || { echo "ERROR: $f too small ($SIZE bytes)"; exit 1; }
+          done
+          echo "Download OK"
+
+      - name: Create or update node-bins release
+        if: steps.check.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VER="${{ steps.ver.outputs.version }}"
+
+          # Create the release if it doesn't exist
+          if ! gh release view node-bins --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create node-bins \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Node.js musl binaries" \
+              --notes "Precompiled Node.js musl static builds for OpenWrt (x86_64 + aarch64).
+
+Sources: [unofficial-builds.nodejs.org](https://unofficial-builds.nodejs.org/)
+
+These binaries are used by \`openclaw-env\` to install Node.js on OpenWrt devices." \
+              --prerelease
+          fi
+
+          # Upload / overwrite the binaries
+          gh release upload node-bins \
+            "node-v${VER}-linux-x64-musl.tar.gz" \
+            "node-v${VER}-linux-arm64-musl.tar.gz" \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
+
+          echo "Uploaded node-v${VER} musl binaries to node-bins release."
