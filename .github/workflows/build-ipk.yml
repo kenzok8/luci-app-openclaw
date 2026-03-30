@@ -157,6 +157,9 @@ jobs:
           TAG="${{ steps.ver.outputs.tag }}"
           IPK="${{ steps.build.outputs.ipk }}"
 
+          # Delete existing release if present (e.g. re-running on same tag)
+          gh release delete "${TAG}" --repo "$GITHUB_REPOSITORY" --yes 2>/dev/null || true
+
           gh release create "${TAG}" \
             --repo "$GITHUB_REPOSITORY" \
             --title "luci-app-openclaw ${TAG}" \
