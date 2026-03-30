@@ -140,13 +140,13 @@ jobs:
 
           echo "Keeping last ${KEEP} versions..."
 
-          ASSETS=$(gh release view node-bins --repo "$REPO" - json assets --jq '.[] | "\(.id)\t\(.name)"')
+          gh release view node-bins --repo "$REPO" --json assets -q '.[] | "\(.id) \(.name)"' > /tmp/assets.txt
 
           declare -A VERSIONS
-          while IFS=$'\t' read -r ID NAME; do
+          while read -r ID NAME; do
             VER_FROM_NAME=$(echo "$NAME" | sed -E 's/node-v(.+)-linux.*/\1/')
             VERSIONS["$VER_FROM_NAME"]+="$ID "
-          done <<< "$ASSETS"
+          done < /tmp/assets.txt
 
           SORTED_VERSIONS=$(printf '%s\n' "${!VERSIONS[@]}" | sort -V -r)
 
@@ -156,7 +156,7 @@ jobs:
             if [ "$COUNT" -gt "$KEEP" ]; then
               echo "Marking for deletion: v${VER}"
               for ASSET_ID in ${VERSIONS[$VER]}; do
-                gh api "repos/$REPO/releases/assets/$(echo $ASSET_ID | tr -d ' ')" -X DELETE
+                gh api "repos/$REPO/releases/assets/${ASSET_ID}" -X DELETE
               done
             fi
           done
