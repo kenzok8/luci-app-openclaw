@@ -11,9 +11,6 @@ on:
         description: 'Number of old versions to keep (default 3)'
         required: false
         default: '3'
-  push:
-    branches:
-      - main
   schedule:
     - cron: '0 2 * * 1'
 
@@ -118,14 +115,11 @@ jobs:
           REPO="$GITHUB_REPOSITORY"
 
           if ! gh release view node-bins --repo "$REPO" >/dev/null 2>&1; then
+            NOTES="Precompiled Node.js musl static builds for OpenWrt (x86_64, aarch64, armv7l).%0A%0ASources: unofficial-builds.nodejs.org%0A%0AThese binaries are used by openclaw-env to install Node.js on OpenWrt devices."
             gh release create node-bins \
               --repo "$REPO" \
               --title "Node.js musl binaries" \
-              --notes "Precompiled Node.js musl static builds for OpenWrt (x86_64, aarch64, armv7l).
-
-Sources: [unofficial-builds.nodejs.org](https://unofficial-builds.nodejs.org/)
-
-These binaries are used by \`openclaw-env\` to install Node.js on OpenWrt devices." \
+              --notes "$NOTES" \
               --prerelease
           fi
 
