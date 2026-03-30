@@ -153,7 +153,10 @@ class PtySession {
       if (msg.type === 'stdin' && this.proc && this.proc.stdin.writable) {
         // 去除 bracketed paste 转义序列，避免污染 shell read 输入
         const cleaned = msg.data.replace(/\x1b\[\?2004[hl]/g, '').replace(/\x1b\[20[01]~/g, '');
-        this.proc.stdin.write(cleaned);
+        // sh 模式无 PTY：xterm.js 按 Enter 发送 \r，但 sh 的 read 等 \n 才结束
+        // PTY 模式由内核 PTY 层自动转换 \r → \n，无需手动处理
+        const input = this._usePty ? cleaned : cleaned.replace(/\r/g, '\n');
+        this.proc.stdin.write(input);
       }
       else if (msg.type === 'resize') {
         this.cols = msg.cols || 80; this.rows = msg.rows || 24;
