@@ -140,7 +140,12 @@ jobs:
 
           echo "Keeping last ${KEEP} versions..."
 
-          gh release view node-bins --repo "$REPO" --json assets -q '.[] | "\(.id) \(.name)"' > /tmp/assets.txt
+          gh api repos/"$REPO"/releases/tags/node-bins --jq '.assets[] | "\(.id) \(.name)"' > /tmp/assets.txt
+
+          if [ ! -s /tmp/assets.txt ]; then
+            echo "No assets to clean up."
+            exit 0
+          fi
 
           declare -A VERSIONS
           while read -r ID NAME; do
@@ -156,7 +161,7 @@ jobs:
             if [ "$COUNT" -gt "$KEEP" ]; then
               echo "Marking for deletion: v${VER}"
               for ASSET_ID in ${VERSIONS[$VER]}; do
-                gh api "repos/$REPO/releases/assets/${ASSET_ID}" -X DELETE
+                gh api repos/"$REPO"/releases/assets/"$ASSET_ID" -X DELETE
               done
             fi
           done
