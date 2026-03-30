@@ -12,6 +12,7 @@ on:
         required: false
         default: '3'
   schedule:
+    # Check for new LTS releases weekly on Monday 02:00 UTC
     - cron: '0 2 * * 1'
 
 jobs:
@@ -37,12 +38,14 @@ jobs:
             echo "Latest LTS: ${LATEST}"
           fi
 
-      - name: Determine arches to download
+      - name: Determine available architectures
         id: arches
         run: |
+          VER="${{ steps.ver.outputs.version }}"
+          # All arch names use the full "linux-<arch>-musl" format matching the upstream filename
+          # x64 is always included; arm64 and armv7l are probed first
           ARCHS="linux-x64-musl"
-          for ARCH in arm64-musl armv7l-musl; do
-            VER="${{ steps.ver.outputs.version }}"
+          for ARCH in linux-arm64-musl linux-armv7l-musl; do
             URL="https://unofficial-builds.nodejs.org/download/release/v${VER}/node-v${VER}-${ARCH}.tar.gz"
             HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" -L "$URL")
             if [ "$HTTP_CODE" = "200" ]; then
@@ -53,33 +56,40 @@ jobs:
             fi
           done
           echo "archs=${ARCHS}" >> "$GITHUB_OUTPUT"
+          echo "Will download: ${ARCHS}"
 
-      - name: Check existing release
+      - name: Check if already released
         id: check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VER="${{ steps.ver.outputs.version }}"
           ARCHS="${{ steps.arches.outputs.archs }}"
-          if gh release view node-bins --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            ALL_EXIST=true
-            for ARCH in $ARCHS; do
-              FILE="node-v${VER}-${ARCH}.tar.gz"
-              if ! gh release view node-bins --repo "$GITHUB_REPOSITORY" - json tag --jq '.assets[] | select(.name == "'$FILE'")' | grep -q "$FILE"; then
-                ALL_EXIST=false
-                break
-              fi
-            done
-            if $ALL_EXIST; then
-              echo "skip=true" >> "$GITHUB_OUTPUT"
-              echo "v${VER} all binaries already in node-bins release, skipping."
-            else
-              echo "skip=false" >> "$GITHUB_OUTPUT"
-              echo "Need to upload missing binaries for v${VER}."
-            fi
-          else
+
+          if ! gh release view node-bins --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "skip=false" >> "$GITHUB_OUTPUT"
             echo "Release node-bins does not exist yet."
+            exit 0
+          fi
+
+          ALL_EXIST=true
+          for ARCH in $ARCHS; do
+            FILE="node-v${VER}-${ARCH}.tar.gz"
+            FOUND=$(gh release view node-bins --repo "$GITHUB_REPOSITORY" \
+              --json assets --jq ".assets[] | select(.name == \"${FILE}\") | .name" 2>/dev/null)
+            if [ -z "$FOUND" ]; then
+              echo "Missing: ${FILE}"
+              ALL_EXIST=false
+              break
+            fi
+          done
+
+          if $ALL_EXIST; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "v${VER} all binaries already present, skipping."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Need to upload missing binaries for v${VER}."
           fi
 
       - name: Download Node.js musl binaries
@@ -92,18 +102,20 @@ jobs:
           for ARCH in $ARCHS; do
             FILE="node-v${VER}-${ARCH}.tar.gz"
             URL="https://unofficial-builds.nodejs.org/download/release/v${VER}/${FILE}"
-            echo "  -> ${ARCH}"
+            echo "  -> ${FILE}"
             curl -fsSL "$URL" -o "$FILE" || { echo "ERROR: Failed to download ${FILE}"; exit 1; }
           done
 
-          for f in node-v${VER}-linux-*.tar.gz; do
-            SIZE=$(stat -c%s "$f")
+          # Verify each file is a real tarball (> 10 MB)
+          for ARCH in $ARCHS; do
+            FILE="node-v${VER}-${ARCH}.tar.gz"
+            SIZE=$(stat -c%s "$FILE")
             if [ "$SIZE" -lt 10000000 ]; then
-              echo "ERROR: $f too small ($SIZE bytes)"
+              echo "ERROR: ${FILE} too small (${SIZE} bytes) — likely a 404 page"
               exit 1
             fi
+            echo "  OK: ${FILE} (${SIZE} bytes)"
           done
-          echo "Download OK"
 
       - name: Create or update node-bins release
         if: steps.check.outputs.skip == 'false'
@@ -115,19 +127,19 @@ jobs:
           REPO="$GITHUB_REPOSITORY"
 
           if ! gh release view node-bins --repo "$REPO" >/dev/null 2>&1; then
-            NOTES="Precompiled Node.js musl static builds for OpenWrt (x86_64, aarch64, armv7l).%0A%0ASources: unofficial-builds.nodejs.org%0A%0AThese binaries are used by openclaw-env to install Node.js on OpenWrt devices."
+            printf 'Precompiled Node.js musl static builds for OpenWrt (x86_64, aarch64, armv7l).\n\nSources: https://unofficial-builds.nodejs.org/\n\nThese binaries are used by openclaw-env to install Node.js on OpenWrt devices.\n' \
+              > /tmp/node-bins-notes.md
             gh release create node-bins \
               --repo "$REPO" \
               --title "Node.js musl binaries" \
-              --notes "$NOTES" \
+              --notes-file /tmp/node-bins-notes.md \
               --prerelease
           fi
 
           for ARCH in $ARCHS; do
             gh release upload node-bins "node-v${VER}-${ARCH}.tar.gz" --repo "$REPO" --clobber
+            echo "Uploaded: node-v${VER}-${ARCH}.tar.gz"
           done
-
-          echo "Uploaded node-v${VER} musl binaries to node-bins release."
 
       - name: Cleanup old versions
         if: steps.check.outputs.skip == 'false'
@@ -138,32 +150,37 @@ jobs:
           [ -z "$KEEP" ] && KEEP=3
           REPO="$GITHUB_REPOSITORY"
 
-          echo "Keeping last ${KEEP} versions..."
+          echo "Keeping last ${KEEP} Node.js versions in node-bins release..."
 
-          gh api repos/"$REPO"/releases/tags/node-bins --jq '.assets[] | "\(.id) \(.name)"' > /tmp/assets.txt
+          # Fetch all asset IDs and names
+          gh api "repos/${REPO}/releases/tags/node-bins" \
+            --jq '.assets[] | "\(.id) \(.name)"' > /tmp/assets.txt
 
           if [ ! -s /tmp/assets.txt ]; then
-            echo "No assets to clean up."
+            echo "No assets found, nothing to clean up."
             exit 0
           fi
 
-          declare -A VERSIONS
-          while read -r ID NAME; do
-            VER_FROM_NAME=$(echo "$NAME" | sed -E 's/node-v(.+)-linux.*/\1/')
-            VERSIONS["$VER_FROM_NAME"]+="$ID "
+          # Group assets by Node.js version (e.g. "22.16.0")
+          declare -A VER_ASSETS
+          while IFS=' ' read -r ID NAME; do
+            # Extract version from filenames like node-v22.16.0-linux-x64-musl.tar.gz
+            VER_KEY=$(echo "$NAME" | sed -E 's/node-v([0-9]+\.[0-9]+\.[0-9]+)-.*/\1/')
+            VER_ASSETS["$VER_KEY"]+="$ID "
           done < /tmp/assets.txt
 
-          SORTED_VERSIONS=$(printf '%s\n' "${!VERSIONS[@]}" | sort -V -r)
-
+          # Sort versions descending and delete oldest ones beyond KEEP
+          SORTED=$(printf '%s\n' "${!VER_ASSETS[@]}" | sort -t. -k1,1nr -k2,2nr -k3,3nr)
           COUNT=0
-          for VER in $SORTED_VERSIONS; do
+          while IFS= read -r V; do
             COUNT=$((COUNT + 1))
             if [ "$COUNT" -gt "$KEEP" ]; then
-              echo "Marking for deletion: v${VER}"
-              for ASSET_ID in ${VERSIONS[$VER]}; do
-                gh api repos/"$REPO"/releases/assets/"$ASSET_ID" -X DELETE
+              echo "Deleting old version: v${V}"
+              for ASSET_ID in ${VER_ASSETS[$V]}; do
+                gh api "repos/${REPO}/releases/assets/${ASSET_ID}" -X DELETE
+                echo "  Deleted asset ${ASSET_ID}"
               done
             fi
-          done
+          done <<< "$SORTED"
 
-          echo "Cleanup done."
+          echo "Cleanup done. Kept ${KEEP} latest versions."
