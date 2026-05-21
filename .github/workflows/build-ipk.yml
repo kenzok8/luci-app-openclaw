@@ -1,4 +1,4 @@
-name: Build & Release IPK
+name: Build & Release Packages
 
 on:
   push:
@@ -47,6 +47,11 @@ jobs:
           mkdir -p _build/data
           # root/ → data/
           cp -a root/. _build/data/
+          # VERSION → /usr/share/openclaw/VERSION for the LuCI status view
+          if [ -f VERSION ]; then
+            mkdir -p _build/data/usr/share/openclaw
+            cp VERSION _build/data/usr/share/openclaw/VERSION
+          fi
           # htdocs/ → data/www/luci-static/...
           mkdir -p _build/data/www
           cp -a htdocs/. _build/data/www/
@@ -82,9 +87,12 @@ jobs:
           /etc/config/openclaw
           EOF
 
-          # postinst: clear LuCI caches so the new view appears immediately
+          # postinst: initialize defaults and clear LuCI caches so the new view appears immediately
           cat > _build/control/postinst <<'POSTINST'
           #!/bin/sh
+          [ -n "$IPKG_INSTROOT" ] || {
+            ( . /etc/uci-defaults/99-openclaw ) && rm -f /etc/uci-defaults/99-openclaw
+          }
           rm -f /tmp/luci-indexcache 2>/dev/null
           rm -rf /tmp/luci-modulecache 2>/dev/null
           exit 0
@@ -101,6 +109,72 @@ jobs:
 
           ls -lh "${IPK}"
           echo "ipk=${IPK}" >> "$GITHUB_OUTPUT"
+
+      - name: Build APK
+        id: apk
+        run: |
+          VER="${{ steps.ver.outputs.version }}"
+          PKG="luci-app-openclaw"
+          APK="${PKG}-${VER}.apk"
+
+          # OpenWrt apk packages store conffile/list metadata under /lib/apk/packages.
+          mkdir -p _build/data/lib/apk/packages _build/apk-scripts
+          ( cd _build/data && find . \( -type f -o -type l \) | sed 's#^\./#/#' | sort ) > "_build/${PKG}.list"
+          mv "_build/${PKG}.list" "_build/data/lib/apk/packages/${PKG}.list"
+          printf '/etc/config/openclaw\n' > "_build/data/lib/apk/packages/${PKG}.conffiles"
+          if [ -f _build/data/etc/config/openclaw ]; then
+            sha256sum _build/data/etc/config/openclaw | awk '{print "/etc/config/openclaw " $1}' > "_build/data/lib/apk/packages/${PKG}.conffiles_static"
+          fi
+
+          cat > _build/apk-scripts/post-install <<'POSTINSTALL'
+          #!/bin/sh
+          [ -n "$IPKG_INSTROOT" ] || {
+            ( . /etc/uci-defaults/99-openclaw ) && rm -f /etc/uci-defaults/99-openclaw
+          }
+          rm -f /tmp/luci-indexcache 2>/dev/null
+          rm -rf /tmp/luci-modulecache 2>/dev/null
+          exit 0
+          POSTINSTALL
+          chmod 0755 _build/apk-scripts/post-install
+
+          cat > _build/apk-scripts/post-upgrade <<'POSTUPGRADE'
+          #!/bin/sh
+          rm -f /tmp/luci-indexcache 2>/dev/null
+          rm -rf /tmp/luci-modulecache 2>/dev/null
+          exit 0
+          POSTUPGRADE
+          chmod 0755 _build/apk-scripts/post-upgrade
+
+          cat > _build/apk-scripts/pre-deinstall <<'PREDEINSTALL'
+          #!/bin/sh
+          exit 0
+          PREDEINSTALL
+          chmod 0755 _build/apk-scripts/pre-deinstall
+
+          docker run --rm \
+            -e VER="${VER}" \
+            -e APK="${APK}" \
+            -v "$PWD:/work" \
+            -w /work \
+            archlinux:latest \
+            bash -lc 'pacman -Sy --noconfirm --needed apk-tools >/dev/null && apk mkpkg \
+              --info "name:luci-app-openclaw" \
+              --info "version:${VER}" \
+              --info "description:OpenClaw AI Gateway LuCI plugin for OpenWrt" \
+              --info "arch:noarch" \
+              --info "license:GPL-3.0" \
+              --info "origin:kenzok8/luci-app-openclaw" \
+              --info "url:https://github.com/kenzok8/luci-app-openclaw" \
+              --info "maintainer:kenzok8" \
+              --info "depends:luci-compat luci-base curl openssl-util" \
+              --script "post-install:_build/apk-scripts/post-install" \
+              --script "post-upgrade:_build/apk-scripts/post-upgrade" \
+              --script "pre-deinstall:_build/apk-scripts/pre-deinstall" \
+              --files "_build/data" \
+              --output "${APK}"'
+
+          ls -lh "${APK}"
+          echo "apk=${APK}" >> "$GITHUB_OUTPUT"
 
       - name: Generate release notes
         id: notes
@@ -128,11 +202,18 @@ jobs:
           sh -c "\$(wget -qO- https://cdn.jsdelivr.net/gh/kenzok8/luci-app-openclaw@main/scripts/install.sh)"
           \`\`\`
 
-          或手动下载安装：
+          opkg 系统手动下载安装：
 
           \`\`\`sh
           wget -O /tmp/luci-app-openclaw.ipk https://github.com/kenzok8/luci-app-openclaw/releases/download/${TAG}/luci-app-openclaw_${VER}_all.ipk
           opkg install --force-reinstall /tmp/luci-app-openclaw.ipk
+          \`\`\`
+
+          apk 系统手动下载安装：
+
+          \`\`\`sh
+          wget -O /tmp/luci-app-openclaw.apk https://github.com/kenzok8/luci-app-openclaw/releases/download/${TAG}/luci-app-openclaw-${VER}.apk
+          apk add --allow-untrusted /tmp/luci-app-openclaw.apk
           \`\`\`
 
           ### 更新内容
@@ -145,7 +226,7 @@ jobs:
 
           | 架构 | 说明 |
           |------|------|
-          | all  | LuCI 插件（架构无关）|
+          | all/noarch | LuCI 插件（架构无关）|
 
           > Node.js musl 二进制见 [node-bins](https://github.com/kenzok8/luci-app-openclaw/releases/tag/node-bins) release
           EOF
@@ -156,6 +237,7 @@ jobs:
         run: |
           TAG="${{ steps.ver.outputs.tag }}"
           IPK="${{ steps.build.outputs.ipk }}"
+          APK="${{ steps.apk.outputs.apk }}"
 
           # Delete existing release if present (e.g. re-running on same tag)
           gh release delete "${TAG}" --repo "$GITHUB_REPOSITORY" --yes 2>/dev/null || true
@@ -164,6 +246,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --title "luci-app-openclaw ${TAG}" \
             --notes-file release_notes.md \
-            "${IPK}"
+            "${IPK}" \
+            "${APK}"
 
-          echo "Released ${IPK} as ${TAG}"
+          echo "Released ${IPK} and ${APK} as ${TAG}"
