@@ -67,6 +67,13 @@ jobs:
             done
           fi
 
+          chmod 0755 _build/data/etc/init.d/openclaw 2>/dev/null || true
+          chmod 0755 _build/data/etc/uci-defaults/99-openclaw 2>/dev/null || true
+          chmod 0755 _build/data/usr/bin/openclaw-env 2>/dev/null || true
+          chmod 0755 _build/data/usr/share/openclaw/oc-config.sh 2>/dev/null || true
+          chmod 0755 _build/data/usr/share/openclaw/luci-helper 2>/dev/null || true
+          chmod 0755 _build/data/usr/share/openclaw/web-pty.js 2>/dev/null || true
+
           # ── control ──
           mkdir -p _build/control
           SIZE=$(du -sk _build/data | awk '{print $1}')
@@ -125,6 +132,8 @@ jobs:
           if [ -f _build/data/etc/config/openclaw ]; then
             sha256sum _build/data/etc/config/openclaw | awk '{print "/etc/config/openclaw " $1}' > "_build/data/lib/apk/packages/${PKG}.conffiles_static"
           fi
+
+          sudo chown -R 0:0 _build/data
 
           cat > _build/apk-scripts/post-install <<'POSTINSTALL'
           #!/bin/sh
