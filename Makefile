@@ -43,6 +43,9 @@ else
 	$(INSTALL_DIR) $(1)/www/luci-static/resources/view
 	$(INSTALL_DATA) ./htdocs/luci-static/resources/view/openclaw.js \
 		$(1)/www/luci-static/resources/view/openclaw.js
+	$(INSTALL_DIR) $(1)/www/luci-static/openclaw
+	$(INSTALL_DATA) ./htdocs/luci-static/openclaw/logo.svg \
+		$(1)/www/luci-static/openclaw/logo.svg
 	# Lua compat (luci 18.06)
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller
 	$(INSTALL_DATA) ./luasrc/controller/openclaw.lua \
