@@ -47,11 +47,10 @@ jobs:
           mkdir -p _build/data
           # root/ → data/
           cp -a root/. _build/data/
-          # VERSION → /usr/share/openclaw/VERSION for the LuCI status view
-          if [ -f VERSION ]; then
-            mkdir -p _build/data/usr/share/openclaw
-            cp VERSION _build/data/usr/share/openclaw/VERSION
-          fi
+          # VERSION → /usr/share/openclaw/VERSION for the LuCI status view.
+          # Use the release tag version so generated packages report their actual release.
+          mkdir -p _build/data/usr/share/openclaw
+          printf '%s\n' "${VER}" > _build/data/usr/share/openclaw/VERSION
           # htdocs/ → data/www/luci-static/...
           mkdir -p _build/data/www
           cp -a htdocs/. _build/data/www/
