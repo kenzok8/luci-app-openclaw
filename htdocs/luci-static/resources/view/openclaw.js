@@ -37,8 +37,8 @@ function buildTokenUrl(base, tokenName, token) {
 	return url;
 }
 
-/* ── Logo: 官方 SVG 从 gateway static 资源动态加载 ── */
-var LOGO_SVG = '<img src="/luci-static/openclaw/logo.svg" width="44" height="44" style="vertical-align:middle;border-radius:8px" onerror="this.style.display=\'none\'">';
+/* ── Logo: reuse bundled OpenClaw icon ── */
+var LOGO_HTML = '<img src="/luci-static/openclaw/icon_64.png" width="44" height="44" style="vertical-align:middle;border-radius:8px" onerror="this.style.display=\'none\'">';
 
 /* ── CSS: inherit page theme, zero custom dark rules ── */
 var CSS = '\
@@ -208,7 +208,7 @@ return view.extend({
 	/* ═══ Header ═══ */
 	_header: function() {
 		var h = E('div', { 'class': 'oc-header' });
-		h.innerHTML = LOGO_SVG +
+		h.innerHTML = LOGO_HTML +
 			'<div><h2>OpenClaw AI Gateway</h2>' +
 			'<div class="sub">' + _('OpenWrt 路由器智能 AI 网关') + '</div></div>';
 		return h;
@@ -584,23 +584,42 @@ return view.extend({
 		var stopBtn = document.getElementById('oc-btn-stop');
 		var restartBtn = document.getElementById('oc-btn-restart');
 		var remoteMode = (st.mode || 'remote') === 'remote';
-		if (startBtn) startBtn.disabled = remoteMode || !!st.gateway_running;
-		if (stopBtn) stopBtn.disabled = remoteMode || !st.gateway_running;
-		if (restartBtn) restartBtn.disabled = remoteMode;
+		if (startBtn) startBtn.disabled = !remoteMode && !!st.gateway_running;
+		if (stopBtn) stopBtn.disabled = !remoteMode && !st.gateway_running;
+		if (restartBtn) restartBtn.disabled = !remoteMode && !st.gateway_running;
 	},
 
 	/* ═══ Service Control ═══ */
 	_svcCtl: function(action) {
 		var self = this;
 		if (this._st && (this._st.mode || 'remote') === 'remote') {
-			ui.addNotification(null, E('p', {}, [_('远端模式不会启动本机 OpenClaw 服务。')]));
+			ui.showModal(_('远端模式'), [
+				E('p', {}, [_('当前是远端 Gateway 模式，路由器上没有本机 OpenClaw 服务可启动或停止。')]),
+				E('p', {}, [_('如需控制本机服务，请先在设置中切换到“源码本机”或“预置本机运行时”，并确认设备资源充足。')]),
+				E('div', { 'style': 'display:flex;gap:10px;justify-content:flex-end;margin-top:16px' }, [
+					E('button', { 'class': 'oc-btn oc-btn-g', 'click': function() { ui.hideModal(); } }, [_('关闭')]),
+					E('button', { 'class': 'oc-btn oc-btn-p', 'click': function() { ui.hideModal(); self._switchTab('settings'); } }, [_('去设置')])
+				])
+			]);
 			return Promise.resolve();
 		}
 		ui.showModal(_('服务控制'), [
 			E('p', {}, [_('正在执行: ') + action + '...']),
 			E('div', { 'class': 'spinning' })
 		]);
-		return fs.exec('/etc/init.d/openclaw', [action]).then(function() {
+		var prep = Promise.resolve();
+		if (action === 'start' || action === 'restart') {
+			uci.set('openclaw', 'main', 'enabled', '1');
+			prep = uci.save().then(function() { return uci.apply(); });
+		}
+		return prep.then(function() {
+			return fs.exec('/etc/init.d/openclaw', [action]);
+		}).then(function() {
+			if (action === 'stop') {
+				uci.set('openclaw', 'main', 'enabled', '0');
+				return uci.save().then(function() { return uci.apply(); });
+			}
+		}).then(function() {
 			return new Promise(function(resolve) { window.setTimeout(resolve, 2500); });
 		}).then(function() {
 			return self._poll();

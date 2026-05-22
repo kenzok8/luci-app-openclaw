@@ -42,11 +42,17 @@ check "LuCI exposes mode selection" \
 check "LuCI exposes remote gateway URL" \
 	contains htdocs/luci-static/resources/view/openclaw.js "oc-f-remote-url"
 
-check "LuCI logo asset exists" \
-	test -f "$ROOT/htdocs/luci-static/openclaw/logo.svg"
+check "LuCI uses bundled OpenClaw icon" \
+	contains htdocs/luci-static/resources/view/openclaw.js "icon_64.png"
 
-check "standalone package installs logo asset" \
-	contains Makefile "luci-static/openclaw/logo.svg"
+check "LuCI icon asset exists" \
+	test -f "$ROOT/htdocs/luci-static/openclaw/icon_64.png"
+
+check "standalone package installs icon asset" \
+	contains Makefile "luci-static/openclaw/icon_64.png"
+
+check "remote mode controls show feedback instead of disabled buttons" \
+	contains htdocs/luci-static/resources/view/openclaw.js "当前是远端 Gateway 模式"
 
 check "LuCI labels source install as advanced" \
 	contains htdocs/luci-static/resources/view/openclaw.js "源码安装"
